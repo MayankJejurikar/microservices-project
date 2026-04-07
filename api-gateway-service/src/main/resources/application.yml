@@ -3,7 +3,7 @@
 # - The yaml file had comments which are lost in the refactoring!
 spring:
   application:
-    name: api-gateway
+    name: API-GATEWAY
   cloud:
     gateway:
       routes:
@@ -18,13 +18,6 @@ spring:
       - id: ENROLLMENT-SERVICE
         uri: lb://ENROLLMENT-SERVICE
         predicates:
-          - Path=/enrollment,/enrollment/**
-server:
-  port: 8080
-#Eureka properties
-eureka:
-  client:
-    fetch-registry: true
-    register-with-eureka: true
-    service-url:
-      defaultZone: http://localhost:8761/eureka
+          - Path=/enrollment,/enrollment/**			
+  config:
+    import: "optional:configserver:http://localhost:8888"

@@ -17,84 +17,67 @@ import java.util.Map;
 @RestControllerAdvice
 public class CourseGlobalExceptionHandler {
 
-    @ExceptionHandler(CourseNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handlingCourseNotFoundException(CourseNotFoundException exception, HttpServletRequest request) {
+	@ExceptionHandler(CourseNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handlingCourseNotFoundException(CourseNotFoundException exception,
+			HttpServletRequest request) {
 
-        ErrorResponse errorResponse = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.NOT_FOUND.value(),
-                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                exception.getMessage(),
-                request.getRequestURI(),
-                null
-        );
+		ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.NOT_FOUND.value(),
+				HttpStatus.NOT_FOUND.getReasonPhrase(), exception.getMessage(), request.getRequestURI(), null);
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
+		return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+	}
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handlingMethodArgumentNotValidException(MethodArgumentNotValidException exception, HttpServletRequest request) {
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<ErrorResponse> handlingMethodArgumentNotValidException(
+			MethodArgumentNotValidException exception, HttpServletRequest request) {
 
-        Map<String, String> errorMessage = new HashMap<>();
+		Map<String, String> errorMessage = new HashMap<>();
 
-        exception.getBindingResult().getAllErrors().forEach((error) -> {
-            FieldError fieldError = (FieldError) error;
-            String fieldName = fieldError.getField();
-            String fieldMessage = fieldError.getDefaultMessage();
+		exception.getBindingResult().getAllErrors().forEach((error) -> {
+			FieldError fieldError = (FieldError) error;
+			String fieldName = fieldError.getField();
+			String fieldMessage = fieldError.getDefaultMessage();
 
-            errorMessage.put(fieldName, fieldMessage);
-        });
+			errorMessage.put(fieldName, fieldMessage);
+		});
 
-        ErrorResponse response = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "Validation Failed",
-                "Invalid Input",
-                request.getRequestURI(),
-                errorMessage
-        );
+		ErrorResponse response = new ErrorResponse(LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(),
+				"Validation Failed", "Invalid Input", request.getRequestURI(), errorMessage);
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    }
+		return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+	}
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handlingConstraintViolationException(ConstraintViolationException exception, HttpServletRequest request) {
+	@ExceptionHandler(ConstraintViolationException.class)
+	public ResponseEntity<ErrorResponse> handlingConstraintViolationException(ConstraintViolationException exception,
+			HttpServletRequest request) {
 
-        Map<String, String> validationError = new HashMap<>();
+		Map<String, String> validationError = new HashMap<>();
 
-        exception.getConstraintViolations().forEach((voilation) -> {
-            String fieldName = voilation.getPropertyPath().toString();
-            fieldName=fieldName.substring(fieldName.lastIndexOf('.')+1);
-            String message = voilation.getMessage();
+		exception.getConstraintViolations().forEach((voilation) -> {
+			String fieldName = voilation.getPropertyPath().toString();
+			fieldName = fieldName.substring(fieldName.lastIndexOf('.') + 1);
+			String message = voilation.getMessage();
 
-            validationError.put(fieldName, message);
-        });
+			validationError.put(fieldName, message);
+		});
 
-        ErrorResponse response = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "Validation Failed",
-                "Invalid Input",
-                request.getRequestURI(),
-                validationError
-        );
+		ErrorResponse response = new ErrorResponse(LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(),
+				"Validation Failed", "Invalid Input", request.getRequestURI(), validationError);
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    }
+		return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+	}
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handlingGlobalException(Exception exception, HttpServletRequest request) {
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorResponse> handlingGlobalException(Exception exception, HttpServletRequest request) throws Exception {
 
-        ErrorResponse response = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                "Something went wrong. Please try again.",
-                request.getRequestURI(),
-                null
-        );
+		if (request.getRequestURI().startsWith("/actuator")) {
+			throw exception;
+		}
 
+		ErrorResponse response = new ErrorResponse(LocalDateTime.now(), HttpStatus.INTERNAL_SERVER_ERROR.value(),
+				HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), "Something went wrong. Please try again.",
+				request.getRequestURI(), null);
 
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+		return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+	}
 }

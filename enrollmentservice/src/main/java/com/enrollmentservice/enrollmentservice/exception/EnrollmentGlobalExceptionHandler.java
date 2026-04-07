@@ -123,8 +123,12 @@ public class EnrollmentGlobalExceptionHandler {
 
 
    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handlingGlobalException(Exception exception, HttpServletRequest request) {
+	public ResponseEntity<ErrorResponse> handlingGlobalException(Exception exception, HttpServletRequest request)
+			throws Exception {
 
+	   if(request.getRequestURI().startsWith("/actuator"))
+		   throw exception;
+	   
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),

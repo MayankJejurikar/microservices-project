@@ -82,7 +82,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handlingGlobalException(Exception exception, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handlingGlobalException(Exception exception, HttpServletRequest request) throws Exception {
+
+        if (request.getRequestURI().startsWith("/actuator")) {
+            throw exception;
+        }
 
         ErrorResponse response = new ErrorResponse(
                 LocalDateTime.now(),
