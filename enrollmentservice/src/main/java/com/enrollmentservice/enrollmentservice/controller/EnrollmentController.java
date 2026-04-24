@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -23,75 +24,92 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/enrollment")
 public class EnrollmentController {
 
-    @Autowired
-    private EnrollmentService enrollmentService;
+	@Autowired
+	private EnrollmentService enrollmentService;
 
-    @PostMapping
-    public ResponseEntity addEnrollment(@Valid @RequestBody EnrollmentRequestDTO enrollmentRequestDTO) {
+	@PostMapping
+	public ResponseEntity addEnrollment(@Valid @RequestBody EnrollmentRequestDTO enrollmentRequestDTO,
+			@RequestHeader("X-Role") String role) {
 
-        enrollmentService.addEnrollment(enrollmentRequestDTO);
+		enrollmentService.addEnrollment(enrollmentRequestDTO);
 
-        return ResponseEntity.status(HttpStatus.CREATED).build();
-    }
+		return ResponseEntity.status(HttpStatus.CREATED).build();
+	}
 
-    @GetMapping
-    public ResponseEntity<PageResponse<EnrollmentResponseDto>> getEnrollments(@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                                              @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                                              @RequestParam(value = "sortBy", defaultValue = "enrollmentId", required = false) String sortBy,
-                                                                              @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
+	@GetMapping
+	public ResponseEntity<PageResponse<EnrollmentResponseDto>> getEnrollments(
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "enrollmentId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
+			@RequestHeader("X-Role") String role) {
 
-        PageResponse<EnrollmentResponseDto> enrollments = enrollmentService.getEnrollments(pageNumber, pageSize, sortBy, sortDir);
+		checkAdminAccess(role);
 
-        return ResponseEntity.status(HttpStatus.OK).body(enrollments);
-    }
+		PageResponse<EnrollmentResponseDto> enrollments = enrollmentService.getEnrollments(pageNumber, pageSize, sortBy,
+				sortDir);
 
-    @GetMapping("/{enrollment_id}")
-    public ResponseEntity<EnrollmentResponseDto> getEnrollment(@PathVariable
-                                                               @Positive(message = "Enrollment ID must be positive and Greater then 0")
-                                                               Integer enrollment_id) {
+		return ResponseEntity.status(HttpStatus.OK).body(enrollments);
+	}
 
-        EnrollmentResponseDto enrollment = enrollmentService
-                .getEnrollment(enrollment_id)
-                .orElseThrow(() -> new NotFoundException("Enrollment Not Found By ID :" + enrollment_id));
+	@GetMapping("/{enrollment_id}")
+	public ResponseEntity<EnrollmentResponseDto> getEnrollment(
+			@PathVariable @Positive(message = "Enrollment ID must be positive and Greater then 0") Integer enrollment_id,
+			@RequestHeader("X-Role") String role) {
 
-        return ResponseEntity.status(HttpStatus.OK).body(enrollment);
-    }
+		EnrollmentResponseDto enrollment = enrollmentService.getEnrollment(enrollment_id)
+				.orElseThrow(() -> new NotFoundException("Enrollment Not Found By ID :" + enrollment_id));
 
-    // Get All courses in which particular student is enrolled
-    @GetMapping("/student/{student_id}")
-    public ResponseEntity<CompletableFuture<PageResponse<Course>>> getCoursesForStudent(@PathVariable
-                                                                     @Positive(message = "Student ID must be positive and greater then 0") Integer student_id,
-                                                                     @RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                                     @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                                     @RequestParam(value = "sortBy", defaultValue = "studentId", required = false) String sortBy,
-                                                                     @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
+		return ResponseEntity.status(HttpStatus.OK).body(enrollment);
+	}
 
-        CompletableFuture<PageResponse<Course>> allCoursesByStudentID = enrollmentService.getAllCoursesByStudentID(student_id, pageNumber, pageSize, sortBy, sortDir);
+	// Get All courses in which particular student is enrolled
+	@GetMapping("/student/{student_id}")
+	public ResponseEntity<CompletableFuture<PageResponse<Course>>> getCoursesForStudent(
+			@PathVariable @Positive(message = "Student ID must be positive and greater then 0") Integer student_id,
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "studentId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
 
-        return ResponseEntity.status(HttpStatus.OK).body(allCoursesByStudentID);
-    }
+		CompletableFuture<PageResponse<Course>> allCoursesByStudentID = enrollmentService
+				.getAllCoursesByStudentID(student_id, pageNumber, pageSize, sortBy, sortDir);
 
-    // Get All students who enrolled in particular course
-    @GetMapping("/course/{course_id}")
-    public ResponseEntity<CompletableFuture<PageResponse<Student>>> getStudentsOfCourse(@PathVariable
-                                                                     @Positive(message = "Course ID must be positive and greater then 0") Integer course_id,
-                                                                     @RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                                     @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                                     @RequestParam(value = "sortBy", defaultValue = "courseId", required = false) String sortBy,
-                                                                     @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
+		return ResponseEntity.status(HttpStatus.OK).body(allCoursesByStudentID);
+	}
 
-        CompletableFuture<PageResponse<Student>> allStudentsByCourseId = enrollmentService.getAllStudentsByCourseId(course_id, pageNumber, pageSize, sortBy, sortDir);
+	// Get All students who enrolled in particular course
+	@GetMapping("/course/{course_id}")
+	public ResponseEntity<CompletableFuture<PageResponse<Student>>> getStudentsOfCourse(
+			@PathVariable @Positive(message = "Course ID must be positive and greater then 0") Integer course_id,
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "courseId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
+			@RequestHeader("X-Role") String role) {
 
-        return ResponseEntity.status(HttpStatus.OK).body(allStudentsByCourseId);
-    }
+		checkAdminAccess(role);
 
-    @DeleteMapping("/{enrollment_id}")
-    public ResponseEntity<?> deleteEnrollment(@PathVariable
-                                              @Positive(message = "Enrollment ID must be positive and greater then 0")
-                                              Integer enrollment_id) {
+		CompletableFuture<PageResponse<Student>> allStudentsByCourseId = enrollmentService
+				.getAllStudentsByCourseId(course_id, pageNumber, pageSize, sortBy, sortDir);
 
-        enrollmentService.deleteEnrollment(enrollment_id);
+		return ResponseEntity.status(HttpStatus.OK).body(allStudentsByCourseId);
+	}
 
-        return new ResponseEntity<>("Enrollment Deleted Successfully", HttpStatus.NO_CONTENT);
-    }
+	@DeleteMapping("/{enrollment_id}")
+	public ResponseEntity<?> deleteEnrollment(
+			@PathVariable @Positive(message = "Enrollment ID must be positive and greater then 0") Integer enrollment_id,
+			@RequestHeader("X-Role") String role) {
+
+		checkAdminAccess(role);
+		enrollmentService.deleteEnrollment(enrollment_id);
+
+		return new ResponseEntity<>("Enrollment Deleted Successfully", HttpStatus.NO_CONTENT);
+	}
+
+	private void checkAdminAccess(String role) {
+		if (!"ADMIN".equals(role)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+		}
+	}
 }

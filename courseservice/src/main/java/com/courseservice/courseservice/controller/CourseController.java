@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -24,70 +25,84 @@ import java.util.List;
 @RequestMapping("/course")
 public class CourseController {
 
-    @Autowired
-    private CourseService courseService;
+	@Autowired
+	private CourseService courseService;
 
-    @GetMapping
-    public ResponseEntity<CourseResponse> getCourses(@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                     @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                     @RequestParam(value = "sortBy", defaultValue = "courseId", required = false) String sortBy,
-                                                     @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
+	@GetMapping
+	public ResponseEntity<CourseResponse> getCourses(
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "courseId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
 
-        CourseResponse courses = courseService.getCourses(pageNumber, pageSize, sortBy, sortDir);
+		CourseResponse courses = courseService.getCourses(pageNumber, pageSize, sortBy, sortDir);
 
-        return ResponseEntity.status(HttpStatus.OK).body(courses);
-    }
+		return ResponseEntity.status(HttpStatus.OK).body(courses);
+	}
 
-    @GetMapping("/{courseId}")
-    public ResponseEntity<CourseResponseDto> getCourse(@PathVariable
-                                                       @Positive(message = "Course ID must not be zero it should be postive number")
-                                                       Integer courseId) {
+	@GetMapping("/{courseId}")
+	public ResponseEntity<CourseResponseDto> getCourse(
+			@PathVariable @Positive(message = "Course ID must not be zero it should be postive number") Integer courseId) {
 
-        CourseResponseDto course = courseService.getCourse(courseId)
-                .orElseThrow(() -> new CourseNotFoundException("Course Not Found by ID :" + courseId));
+		CourseResponseDto course = courseService.getCourse(courseId)
+				.orElseThrow(() -> new CourseNotFoundException("Course Not Found by ID :" + courseId));
 
-        return ResponseEntity.status(HttpStatus.OK).body(course);
-    }
+		return ResponseEntity.status(HttpStatus.OK).body(course);
+	}
 
-    @PostMapping
-    public ResponseEntity<CourseResponseDto> addCourse(@Valid @RequestBody CourseRequestDto courseRequestDto) {
+	@PostMapping
+	public ResponseEntity<CourseResponseDto> addCourse(@Valid @RequestBody CourseRequestDto courseRequestDto,
+			@RequestHeader("X-Role") String role) {
 
-        CourseResponseDto responseDto = courseService.addCourse(courseRequestDto);
+		checkAdminAccess(role);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
-    }
+		CourseResponseDto responseDto = courseService.addCourse(courseRequestDto);
 
-    @PutMapping("/{courseId}")
-    public ResponseEntity<CourseResponseDto> updateCourse(@PathVariable
-                                                          @Positive(message = "Course ID must not be zero it should be postive number")
-                                                          Integer courseId, @Valid @RequestBody CourseRequestDto courseRequestDto) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+	}
 
-        CourseResponseDto responseDto = courseService.updateCourse(courseId, courseRequestDto);
+	@PutMapping("/{courseId}")
+	public ResponseEntity<CourseResponseDto> updateCourse(
+			@PathVariable @Positive(message = "Course ID must not be zero it should be postive number") Integer courseId,
+			@Valid @RequestBody CourseRequestDto courseRequestDto, @RequestHeader("X-Role") String role) {
 
-        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
-    }
+		checkAdminAccess(role);
 
-    // Get All the courses by multiple courseId
-    @PostMapping("/courses")
-    public ResponseEntity<CourseResponse> getAllCoursesByIDs(@RequestBody List<Integer> courseId, @RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                             @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                             @RequestParam(value = "sortBy", defaultValue = "courseId", required = false) String sortBy,
-                                                             @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
+		CourseResponseDto responseDto = courseService.updateCourse(courseId, courseRequestDto);
 
-        CourseResponse allCourseByIds = courseService.getAllCourseByIds(courseId, pageNumber, pageSize, sortBy, sortDir);
+		return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+	}
 
-        log.info("Courses:{}", allCourseByIds);
+	// Get All the courses by multiple courseId
+	@PostMapping("/courses")
+	public ResponseEntity<CourseResponse> getAllCoursesByIDs(@RequestBody List<Integer> courseId,
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "courseId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) {
 
-        return new ResponseEntity<>(allCourseByIds, HttpStatus.OK);
-    }
+		CourseResponse allCourseByIds = courseService.getAllCourseByIds(courseId, pageNumber, pageSize, sortBy,
+				sortDir);
 
-    @DeleteMapping("/{courseId}")
-    public ResponseEntity deleteCourse(@PathVariable
-                                       @Positive(message = "Course ID must not be zero it should be postive number")
-                                       Integer courseId) {
+		log.info("Courses:{}", allCourseByIds);
 
-        courseService.deleteCourse(courseId);
+		return new ResponseEntity<>(allCourseByIds, HttpStatus.OK);
+	}
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
+	@DeleteMapping("/{courseId}")
+	public ResponseEntity deleteCourse(
+			@PathVariable @Positive(message = "Course ID must not be zero it should be postive number") Integer courseId,
+			@RequestHeader("X-Role") String role) {
+
+		checkAdminAccess(role);
+		courseService.deleteCourse(courseId);
+
+		return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+	}
+
+	private void checkAdminAccess(String role) {
+		if (!"ADMIN".equals(role)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+		}
+	}
 }

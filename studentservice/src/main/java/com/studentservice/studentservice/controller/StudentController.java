@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,73 +26,85 @@ import java.util.List;
 @Slf4j
 public class StudentController {
 
-    @Autowired
-    private StudentService service;
+	@Autowired
+	private StudentService service;
 
-    @GetMapping
-    public ResponseEntity<StudentResponse> getStudents(@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                       @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                       @RequestParam(value = "sortBy", defaultValue = "stuId", required = false) String sortBy,
-                                                       @RequestParam(value = "sortDir", defaultValue = "ASC", required = false) String sortDir
-    ) {
+	@GetMapping
+	public ResponseEntity<StudentResponse> getStudents(
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "stuId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "ASC", required = false) String sortDir) {
 
-        StudentResponse studentsResponse = service.getStudents(pageNumber, pageSize, sortBy, sortDir);
+		StudentResponse studentsResponse = service.getStudents(pageNumber, pageSize, sortBy, sortDir);
 
-        return ResponseEntity.ok(studentsResponse);
-    }
+		return ResponseEntity.ok(studentsResponse);
+	}
 
-    @GetMapping("/{studentId}")
-    public ResponseEntity<?> getStudent(@PathVariable
-                                        @Positive(message = "Student ID must be positive")
-                                        Integer studentId) throws InterruptedException {
+	@GetMapping("/{studentId}")
+	public ResponseEntity<?> getStudent(
+			@PathVariable @Positive(message = "Student ID must be positive") Integer studentId)
+			throws InterruptedException {
 
-        //Thread.sleep(7000);
-        StudentResponseDto student = service
-                .getStudent(studentId)
-                .orElseThrow(() -> new StudentNotFoundException("Student Not found with id :" + studentId));
-        return ResponseEntity.ok(student);
-    }
+		// Thread.sleep(7000);
+		StudentResponseDto student = service.getStudent(studentId)
+				.orElseThrow(() -> new StudentNotFoundException("Student Not found with id :" + studentId));
+		return ResponseEntity.ok(student);
+	}
 
-    @PostMapping
-    public ResponseEntity<StudentResponseDto> addStudent(@Valid @RequestBody StudentRequestDto student) {
+	@PostMapping
+	public ResponseEntity<StudentResponseDto> addStudent(@Valid @RequestBody StudentRequestDto student,
+			@RequestHeader("X-Role") String role) {
 
-        StudentResponseDto responseDto = service.addStudent(student);
+		checkAdminAccess(role);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
-    }
+		StudentResponseDto responseDto = service.addStudent(student);
 
-    @PostMapping("/students")
-    public ResponseEntity<StudentResponse> getAllStudentByIDs(@RequestBody List<Integer> studentId,
-                                                              @RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
-                                                              @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                                              @RequestParam(value = "sortBy", defaultValue = "stuId", required = false) String sortBy,
-                                                              @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir) throws InterruptedException {
+		return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+	}
 
-       // Thread.sleep(7000);
-        StudentResponse response = service.getAllStudentByIDs(studentId, pageNumber, pageSize, sortBy, sortDir);
+	@PostMapping("/students")
+	public ResponseEntity<StudentResponse> getAllStudentByIDs(@RequestBody List<Integer> studentId,
+			@RequestParam(value = "pageNumber", defaultValue = "0", required = false) Integer pageNumber,
+			@RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+			@RequestParam(value = "sortBy", defaultValue = "stuId", required = false) String sortBy,
+			@RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
+			@RequestHeader("X-Role") String role) throws InterruptedException {
 
-        log.info("Students by IDS ={}", response.getContent());
+		checkAdminAccess(role);
+		StudentResponse response = service.getAllStudentByIDs(studentId, pageNumber, pageSize, sortBy, sortDir);
 
-        return new ResponseEntity<>(response, HttpStatus.OK);
-    }
+		log.info("Students by IDS ={}", response.getContent());
 
-    @PutMapping("/{studentId}")
-    public ResponseEntity<StudentResponseDto> updateStudent(@PathVariable
-                                                            @Positive(message = "Student ID must be positive")
-                                                            Integer studentId, @Valid @RequestBody StudentRequestDto student) {
+		return new ResponseEntity<>(response, HttpStatus.OK);
+	}
 
-        StudentResponseDto responseDto = service.updateStudent(studentId, student);
-        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
-    }
+	@PutMapping("/{studentId}")
+	public ResponseEntity<StudentResponseDto> updateStudent(
+			@PathVariable @Positive(message = "Student ID must be positive") Integer studentId,
+			@Valid @RequestBody StudentRequestDto student, @RequestHeader("X-Role") String role) {
 
-    @DeleteMapping("/{studentId}")
-    public ResponseEntity deleteStudent(@PathVariable
-                                        @Positive(message = "Student ID must be positive")
-                                        Integer studentId) {
+		checkAdminAccess(role);
 
-        service.deleteStudent(studentId);
+		StudentResponseDto responseDto = service.updateStudent(studentId, student);
+		return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+	}
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
+	@DeleteMapping("/{studentId}")
+	public ResponseEntity deleteStudent(
+			@PathVariable @Positive(message = "Student ID must be positive") Integer studentId,
+			@RequestHeader("X-Role") String role) {
+
+		checkAdminAccess(role);
+		service.deleteStudent(studentId);
+
+		return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+	}
+
+	private void checkAdminAccess(String role) {
+		if (!"ADMIN".equals(role)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+		}
+	}
 
 }

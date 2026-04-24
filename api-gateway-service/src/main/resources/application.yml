@@ -2,22 +2,33 @@
 # Warnings:
 # - The yaml file had comments which are lost in the refactoring!
 spring:
-  application:
-    name: API-GATEWAY
-  cloud:
-    gateway:
-      routes:
-      - id: STUDENT-SERVICE
-        uri: lb://STUDENT-SERVICE
-        predicates:
-          - Path=/student,/student/**
-      - id: COURSE-SERVICE
-        uri: lb://COURSE-SERVICE
-        predicates:
-          - Path=/course,/course/**
-      - id: ENROLLMENT-SERVICE
-        uri: lb://ENROLLMENT-SERVICE
-        predicates:
-          - Path=/enrollment,/enrollment/**			
-  config:
-    import: "optional:configserver:http://localhost:8888"
+    application:
+        name: API-GATEWAY
+    cloud:
+        gateway:
+            routes:
+                - id: STUDENT-SERVICE
+                  uri: lb://STUDENT-SERVICE
+                  predicates:
+                      - Path=/student/**,/user/student/**,/admin/student/**
+                  filters:
+                      - RewritePath=/user/student(?<segment>.*), /student${segment}
+                      - RewritePath=/admin/student(?<segment>.*), /student${segment}
+                - id: COURSE-SERVICE
+                  uri: lb://COURSE-SERVICE
+                  predicates:
+                      - Path=/course/**,/user/course/**,/admin/course/**
+                  filters:
+                      - RewritePath=/user/course(?<segment>.*),/course${segment}
+                      - RewritePath=/admin/course(?<segment>.*),/course${segment}
+                - id: ENROLLMENT-SERVICE
+                  uri: lb://ENROLLMENT-SERVICE
+                  predicates:
+                      - Path=/enrollment/**,/user/enrollment/**,/admin/enrollment/**
+                  filters:
+                      - RewritePath=/user/enrollment(?<segment>.*),/enrollment${segment}
+                      - RewritePath=/admin/enrollment(?<segment>.*),/enrollment${segment}
+    config:
+        import: "optional:configserver:http://localhost:8888"
+jwt:
+  secret: mysecretkeymysecretkeymysecretkey12
